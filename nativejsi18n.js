@@ -7,120 +7,120 @@
 
 var I18n = (function() {
 
-	if (!window.console) console = {};
-	console.log = console.log || function(){};
-	console.warn = console.warn || function(){};
-	console.error = console.error || function(){};
-	console.info = console.info || function(){};
+    if (!window.console) console = {};
+    console.log = console.log || function(){};
+    console.warn = console.warn || function(){};
+    console.error = console.error || function(){};
+    console.info = console.info || function(){};
 
-	if (String.prototype.trim == null){
-	    String.prototype.trim = function(){
-	        return (this.replace(/^[\s\xA0]+/, "").replace(/[\s\xA0]+$/, ""));
-	    };
-	}
+    if (String.prototype.trim == null){
+        String.prototype.trim = function(){
+            return (this.replace(/^[\s\xA0]+/, "").replace(/[\s\xA0]+$/, ""));
+        };
+    }
 
-	var Client = (function(){
-	    var _parameters = null;
-	    return {
-	    	loadHttpParameters : function(){
-	    		_parameters = [];
-	    	    var search = document.location.search;
-	    	    if (search != null && search.length > 0) {
-	    	        search = search.substring(1);
-	    	        var params = search.split('&');
-	    	        for ( var i = 0; i < params.length; i++) {
-	    	            var kv = params[i].split('=');
-	    	            var k = kv[0].trim();
-	    	            var v = kv[1].trim();
-	    	            _parameters[k] = decodeURI(v);
-	    	        }
-	    	    }
-	    	},
-	        getHttpParameter : function(_key, _default) {
-	        	if(_parameters == undefined){
-	        		this.loadHttpParameters();
-	        	}
-	            var ret = _parameters[_key];
-	            return ret != undefined ? ret : _default;
-	        },
-	        load : function(url, callback) {
-	            var xmlhttp;
-	            if (window.XMLHttpRequest) {
-	                xmlhttp = new XMLHttpRequest();
-	            } else {
-	                xmlhttp = new ActiveXObject('Microsoft.XMLHTTP');
-	            }
-	            xmlhttp.onreadystatechange = function() {
-	                if (xmlhttp.readyState == 4) {
-	                    var data = xmlhttp.responseText;
-	                    var status = xmlhttp.status;
-	                    if (callback != undefined && typeof callback == 'function') {
-	                        callback.call(this, data, status);
-	                    }
-	                }
-	            };
-	            xmlhttp.open('GET', url, true);
-	            xmlhttp.send();
-	        }
-	    };
+    var Client = (function(){
+        var _parameters = null;
+        return {
+            loadHttpParameters : function(){
+                _parameters = [];
+                var search = document.location.search;
+                if (search != null && search.length > 0) {
+                    search = search.substring(1);
+                    var params = search.split('&');
+                    for ( var i = 0; i < params.length; i++) {
+                        var kv = params[i].split('=');
+                        var k = kv[0].trim();
+                        var v = kv[1].trim();
+                        _parameters[k] = decodeURI(v);
+                    }
+                }
+            },
+            getHttpParameter : function(_key, _default) {
+                if(_parameters == undefined){
+                    this.loadHttpParameters();
+                }
+                var ret = _parameters[_key];
+                return ret != undefined ? ret : _default;
+            },
+            load : function(url, callback) {
+                var xmlhttp;
+                if (window.XMLHttpRequest) {
+                    xmlhttp = new XMLHttpRequest();
+                } else {
+                    xmlhttp = new ActiveXObject('Microsoft.XMLHTTP');
+                }
+                xmlhttp.onreadystatechange = function() {
+                    if (xmlhttp.readyState == 4) {
+                        var data = xmlhttp.responseText;
+                        var status = xmlhttp.status;
+                        if (callback != undefined && typeof callback == 'function') {
+                            callback.call(this, data, status);
+                        }
+                    }
+                };
+                xmlhttp.open('GET', url, true);
+                xmlhttp.send();
+            }
+        };
 
-	})();
+    })();
 
-	var Dictionary = function(data){
-	    var _readProperties = function(properties) {
-	        var ret = [];
-	        var lines;
-	        if (document.all) { // IE
-	            lines = properties.split('\r\n');
-	        } else { // Mozilla
-	            lines = properties.split('\n');
-	        }
-	        if (lines.length > 0) {
-	            do {
-	                var line = lines[0];
-	                var kv = line.split('=');
-	                if (kv != undefined && kv.length == 2) {
-	                    var k = kv[0].trim();
-	                    var v = kv[1].trim();
-	                    if (v.indexOf('eval:') == 0) {
-	                        v = eval(v.substring(5));
-	                    }
-	                    ret[k] = v;
-	                }
-	                lines.splice(0, 1);
-	            } while (lines.length > 0);
-	        }
-	        return ret;
-	    };
+    var Dictionary = function(data){
+        var _readProperties = function(properties) {
+            var ret = [];
+            var lines;
+            if (document.all) { // IE
+                lines = properties.split('\r\n');
+            } else { // Mozilla
+                lines = properties.split('\n');
+            }
+            if (lines.length > 0) {
+                do {
+                    var line = lines[0];
+                    var kv = line.split('=');
+                    if (kv != undefined && kv.length == 2) {
+                        var k = kv[0].trim();
+                        var v = kv[1].trim();
+                        if (v.indexOf('eval:') == 0) {
+                            v = eval(v.substring(5));
+                        }
+                        ret[k] = v;
+                    }
+                    lines.splice(0, 1);
+                } while (lines.length > 0);
+            }
+            return ret;
+        };
 
-	    var _messages = _readProperties(data);
+        var _messages = _readProperties(data);
 
-	    return {
-	        translate : function(key, params){
-	            var msg = key;
-	            if(key != undefined && _messages[key] != undefined){
-	                msg = _messages[key];
-	            }
-	            if(msg){
-	                var indexDeb = msg.indexOf('{');
-	                if (indexDeb != -1){
-	                    var indexFin = msg.indexOf('}', indexDeb);
-	                    var param = msg.substring(indexDeb + 1, indexFin);
-	                    if(!isNaN(param) && params.length > parseInt(param)){
-	                        try{
-	                            var valeurParam = params[parseInt(param)];
-	                            var newMsg = msg.substring(0, indexDeb) + valeurParam + msg.substring(indexFin + 1); 
-	                            return this.translate(newMsg, params);
-	                        }
-	                        catch(e){
-	                        }
-	                    }
-	                }
-	            }
-	            return msg;
-	        }
-	    };
-	};
+        return {
+            translate : function(key, params){
+                var msg = key;
+                if(key != undefined && _messages[key] != undefined){
+                    msg = _messages[key];
+                }
+                if(msg){
+                    var indexDeb = msg.indexOf('{');
+                    if (indexDeb != -1){
+                        var indexFin = msg.indexOf('}', indexDeb);
+                        var param = msg.substring(indexDeb + 1, indexFin);
+                        if(!isNaN(param) && params.length > parseInt(param)){
+                            try{
+                                var valeurParam = params[parseInt(param)];
+                                var newMsg = msg.substring(0, indexDeb) + valeurParam + msg.substring(indexFin + 1); 
+                                return this.translate(newMsg, params);
+                            }
+                            catch(e){
+                            }
+                        }
+                    }
+                }
+                return msg;
+            }
+        };
+    };
 
     var language = window.navigator.userLanguage || window.navigator.language;
     
