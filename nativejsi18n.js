@@ -6,6 +6,9 @@
  */
 
 var i18n = (function() {
+    var document = window.document, navigator = window.navigator;
+    var defaultLang = navigator.userLanguage || navigator.language;
+
     /* begin functions */
 
     function asArray(args, start) {
@@ -49,12 +52,6 @@ var i18n = (function() {
                 action.apply(null, [ property, object[property] ]
                         .concat(fixedArgs));
         }
-    }
-
-    function negate(func) {
-        return function() {
-            return !func.apply(null, arguments);
-        };
     }
 
     var op = {
@@ -171,7 +168,7 @@ var i18n = (function() {
                     }
                 }
             };
-            xhr.open('GET', url, true);
+            xhr.open('GET', url, true); // TODO add asynchronous within options
             xhr.send();
         };
     }
@@ -248,9 +245,9 @@ var i18n = (function() {
     copy(Translator.prototype, Dictionary.prototype);
     // @overwrites Dictionary.store
     Translator.prototype.store = function(name, value, callback) {
-        var fixedArgs = asArray(arguments, 3);
         var dico = this.lookup(name) || new Dictionary();
-        dico.loadProperties.apply(dico, [ value, callback ].concat(fixedArgs));
+        dico.loadProperties.apply(dico, [ value, callback ].concat(asArray(
+                arguments, 3)));
         this.values[name] = dico;
     };
     Translator.prototype.translate = function(lang, key, params) {
@@ -278,20 +275,31 @@ var i18n = (function() {
     var translator = new Translator();
 
     return {
-        load : function(lang, url, callback) {
-            if (isUndefined(callback)) {
-                var self = this;
-                callback = function() {
-                    self.translateDocument(lang);
-                };
-            }
-            translator.store(lang, url, callback);
+        load : function(dictionaries, callback) {
+            var loadDictionaries = function(dictionaries) {
+                if (dictionaries && dictionaries.length > 0) {
+                    var dictionary = dictionaries[0];
+                    translator.store(dictionary.lang || defaultLang,
+                            dictionary.url, function() {
+                                dictionaries.splice(0, 1);
+                                loadDictionaries(dictionaries);
+                            });
+                } else if (isDefined(callback)) {
+                    setTimeout(callback, 100);
+                }
+            };
+
+            loadDictionaries(dictionaries);
+
         },
         translate : function(lang, key, params) {
             return translator.translate(lang, key, params);
         },
         translateDocument : function(lang, params) {
             var self = this;
+            if (isUndefined(lang)) {
+                lang = defaultLang;
+            }
             forEach(getByClass(document, 'i18n'), function(element) {
                 var key = element.id;
                 if (isDefined(key)) {

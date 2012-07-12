@@ -7,7 +7,7 @@
 <script type="text/javascript">
 <!--
 alert(i18n.translate('fr', 'Hello {0}', ['Stéphane']));
-i18n.load('fr', 'i18n/messages_fr.properties', function(){i18n.translateDocument('fr')});
+i18n.load([{url:'i18n/messages_fr.properties', lang:'fr'}], function(){i18n.translateDocument('fr')});
 //-->
 </script>
 </head>
