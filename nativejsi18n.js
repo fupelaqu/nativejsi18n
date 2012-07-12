@@ -3,193 +3,302 @@
 | I18n 0.1
 | https://github.com/fupelaqu/nativejsi18n
 |--------------------------------------------------------------------------
-*/
+ */
 
-var I18n = (function() {
+var i18n = (function() {
+    /* begin functions */
 
-    if (!window.console) console = {};
-    console.log = console.log || function(){};
-    console.warn = console.warn || function(){};
-    console.error = console.error || function(){};
-    console.info = console.info || function(){};
+    function asArray(args, start) {
+        var result = [];
+        for ( var i = (start || 0); i < args.length; i++)
+            result.push(args[i]);
+        return result;
+    }
 
-    if (String.prototype.trim == null){
-        String.prototype.trim = function(){
-            return (this.replace(/^[\s\xA0]+/, "").replace(/[\s\xA0]+$/, ""));
+    function forEach(array, action) {
+        // support for additional arguments required by the action to perform
+        // for each element within the array
+        var fixedArgs = asArray(arguments, 2);
+        var copy = [].concat(array);
+        for ( var i = 0; i < array.length; i++) {
+            action.apply(null, [ array[i], i, copy ].concat(fixedArgs));
+        }
+    }
+
+    function reduce(func, base, array) {
+        forEach(array, function(element) {
+            base = func(base, element);
+        });
+        return base;
+    }
+
+    function map(func, array) {
+        var result = [];
+        forEach(array, function(element) {
+            result.push(func(element));
+        });
+        return result;
+    }
+
+    function forEachIn(object, action) {
+        var fixedArgs = asArray(arguments, 2);
+        for ( var property in object) {
+            if (Object.prototype.hasOwnProperty.call(object, property)
+                    && Object.prototype.propertyIsEnumerable.call(object,
+                            property))
+                action.apply(null, [ property, object[property] ]
+                        .concat(fixedArgs));
+        }
+    }
+
+    function negate(func) {
+        return function() {
+            return !func.apply(null, arguments);
         };
     }
 
-    var Client = (function(){
-        var _parameters = null;
-        return {
-            loadHttpParameters : function(){
-                _parameters = [];
-                var search = document.location.search;
-                if (search != null && search.length > 0) {
-                    search = search.substring(1);
-                    var params = search.split('&');
-                    for ( var i = 0; i < params.length; i++) {
-                        var kv = params[i].split('=');
-                        var k = kv[0].trim();
-                        var v = kv[1].trim();
-                        _parameters[k] = decodeURI(v);
-                    }
-                }
-            },
-            getHttpParameter : function(_key, _default) {
-                if(_parameters == undefined){
-                    this.loadHttpParameters();
-                }
-                var ret = _parameters[_key];
-                return ret != undefined ? ret : _default;
-            },
-            load : function(url, callback) {
-                var xmlhttp;
-                if (window.XMLHttpRequest) {
-                    xmlhttp = new XMLHttpRequest();
-                } else {
-                    xmlhttp = new ActiveXObject('Microsoft.XMLHTTP');
-                }
-                xmlhttp.onreadystatechange = function() {
-                    if (xmlhttp.readyState == 4) {
-                        var data = xmlhttp.responseText;
-                        var status = xmlhttp.status;
-                        if (callback != undefined && typeof callback == 'function') {
-                            callback.call(this, data, status);
-                        }
-                    }
-                };
-                xmlhttp.open('GET', url, true);
-                xmlhttp.send();
-            }
-        };
-
-    })();
-
-    var Dictionary = function(data){
-        var _readProperties = function(properties) {
-            var ret = [];
-            var lines;
-            if (document.all) { // IE
-                lines = properties.split('\r\n');
-            } else { // Mozilla
-                lines = properties.split('\n');
-            }
-            if (lines.length > 0) {
-                do {
-                    var line = lines[0];
-                    var kv = line.split('=');
-                    if (kv != undefined && kv.length == 2) {
-                        var k = kv[0].trim();
-                        var v = kv[1].trim();
-                        if (v.indexOf('eval:') == 0) {
-                            v = eval(v.substring(5));
-                        }
-                        ret[k] = v;
-                    }
-                    lines.splice(0, 1);
-                } while (lines.length > 0);
-            }
-            return ret;
-        };
-
-        var _messages = _readProperties(data);
-
-        return {
-            translate : function(key, params){
-                var msg = key;
-                if(key != undefined && _messages[key] != undefined){
-                    msg = _messages[key];
-                }
-                if(msg){
-                    var indexDeb = msg.indexOf('{');
-                    if (indexDeb != -1){
-                        var indexFin = msg.indexOf('}', indexDeb);
-                        var param = msg.substring(indexDeb + 1, indexFin);
-                        if(!isNaN(param) && params.length > parseInt(param)){
-                            try{
-                                var valeurParam = params[parseInt(param)];
-                                var newMsg = msg.substring(0, indexDeb) + valeurParam + msg.substring(indexFin + 1); 
-                                return this.translate(newMsg, params);
-                            }
-                            catch(e){
-                            }
-                        }
-                    }
-                }
-                return msg;
-            }
-        };
-    };
-
-    var language = window.navigator.userLanguage || window.navigator.language;
-    
-    var _defaultLang  = language != undefined ? language.substring(0, 2) : null;
-
-    var _dictionaries = [];
-
-    var _dictionary = null;
-
-    var _loadDictionaries = function(dictionaries, callback) {
-        if (dictionaries != undefined && dictionaries.length > 0) {
-            if(_defaultLang == undefined){
-                _defaultLang = Client.getHTTPParameter('lang');
-            }
-            var _lang = dictionaries[0].lang;
-            var _url = dictionaries[0].url;
-            var _default = _lang === _defaultLang;
-            if(_url != undefined && _lang != undefined){
-                Client.load(_url, function(data, textStatus) {
-                    if (textStatus == 200) {
-                        var _d = new Dictionary(data);
-                        _dictionaries[_lang] = _d;
-                        if(_default || _dictionary == undefined){
-                            _dictionary = _d;
-                        }
-                        dictionaries.splice(0, 1);
-                        _loadDictionaries(dictionaries, callback);
-                    } else {
-                        console.error('error loading ' + _url + ':' + textStatus);
-                    }
-                });
-            }
-            else{
-                console.error('url and lang are mandatory attributes for each dictionary');
-            }
-        } else {
-            if (callback != undefined && typeof callback == 'function') {
-                setTimeout(function() {
-                    try {
-                        callback.call(this);
-                    } catch (err) {
-                        notify(err);
-                    }
-                }, 100);
-            }
+    var op = {
+        "==" : function(a, b) {
+            return a == b;
+        },
+        "!" : function(a) {
+            return !a;
         }
     };
 
+    function partial(func) {
+        var fixedArgs = asArray(arguments, 1);
+        return function() {
+            return func.apply(null, fixedArgs.concat(asArray(arguments)));
+        };
+    }
+
+    function compose(func1, func2) {
+        return function() {
+            return func1(func2.apply(null, arguments));
+        };
+    }
+
+    var isNumber = compose(op["!"], isNaN);
+    var isUndefined = partial(op["=="], undefined);
+    var isDefined = compose(op["!"], isUndefined);
+
+    function copy(target, source) {
+        forEachIn(source, function(name, value) {
+            target[name] = value;
+        });
+        return target;
+    }
+
+    /* string functions */
+
+    function trim(str) {
+        return str ? (str.replace(/^[\s\xA0]+/, "").replace(/[\s\xA0]+$/, ""))
+                : null;
+    }
+
+    /* node functions */
+
+    function setText(element, text) {
+        element.innerText = text;
+        element.textContent = text;
+    }
+
+    function getByClass(element, className) {
+        function hasClass(element, name) {
+            var re = new RegExp('(^| )' + name + '( |$)');
+            return re.test(element.className);
+        }
+
+        if (element.querySelectorAll) {
+            return element.querySelectorAll('.' + className);
+        }
+
+        var result = [];
+        var candidates = element.getElementsByTagName("*");
+        forEach(candidates, function(element) {
+            if (hasClass(element, className)) {
+                result.push(element);
+            }
+        });
+        return result;
+    }
+
+    /* end functions */
+
+    /* begin Dictionary class */
+
+    function Dictionary(startValues) {
+        this.values = startValues || {};
+        this.readProperties = function(properties) {
+            var self = this;
+            function readLine(line) {
+                var kv = line.split('=');
+                if (kv != undefined && kv.length == 2) {
+                    self.store(trim(kv[0]), trim(kv[1]));
+                }
+            }
+            var lines = [];
+            if (document.all) { // IE
+                lines = properties ? properties.split('\r\n') : [];
+            } else { // Mozilla
+                lines = properties ? properties.split('\n') : [];
+            }
+            forEach(lines, readLine);
+        };
+        this.loadProperties = function(url, callback) {
+            var fixedArgs = asArray(arguments, 2);
+            var xhr = null;
+            var self = this;
+            if (window.XMLHttpRequest) {
+                xhr = new XMLHttpRequest();
+            } else {
+                xhr = new ActiveXObject('Microsoft.XMLHTTP');
+            }
+            xhr.onreadystatechange = function() {
+                var requestTimer = setTimeout(function() {
+                    xhr.abort();
+                    // TODO Handle timeout situation, e.g. Retry or inform user.
+                }, 30000);
+                if (xhr.readyState == 4) {
+                    if (xhr.status != 200 && xhr.status != 0) {
+                        // TODO Handle error, e.g. Display error message on page
+                        return;
+                    }
+                    self.readProperties(xhr.responseText);
+                    if (isDefined(callback) && typeof callback == 'function') {
+                        callback.apply(null, fixedArgs);
+                    }
+                }
+            };
+            xhr.open('GET', url, true);
+            xhr.send();
+        };
+    }
+    Dictionary.prototype.store = function(name, value) {
+        this.values[name] = value;
+    };
+    Dictionary.prototype.lookup = function(name) {
+        return this.values[name];
+    };
+    Dictionary.prototype.contains = function(name) {
+        return Object.prototype.hasOwnProperty.call(this.values, name)
+                && Object.prototype.propertyIsEnumerable
+                        .call(this.values, name);
+    };
+    Dictionary.prototype.each = function(action) {
+        forEachIn.apply(null, [ this.values, action ].concat(asArray(arguments,
+                1)));
+    };
+    Dictionary.prototype.names = function() {
+        var names = [];
+        this.each(function(name, value) {
+            names.push(name);
+        });
+        return names;
+    };
+
+    /* end Dictionary class */
+
+    function Translator() {
+        Dictionary.apply(this, arguments);
+        this.splitText = function(text) {
+            function indexOrEnd(character) {
+                var index = text.indexOf(character);
+                return index == -1 ? text.length : index;
+            }
+
+            function takeNormal() {
+                var end = reduce(Math.min, text.length,
+                        map(indexOrEnd, [ '{' ]));
+                var part = text.slice(0, end);
+                text = text.slice(end);
+                return part;
+            }
+
+            function takeUpTo(character) {
+                var end = text.indexOf(character, 1);
+                if (end == -1)
+                    throw new Error("Missing closing '" + character + "'");
+                var part = text.slice(1, end);
+                text = text.slice(end + 1);
+                return part;
+            }
+
+            var parts = [];
+
+            while (text != "") {
+                if (text.charAt(0) == '{') {
+                    parts.push({
+                        type : 'param',
+                        content : takeUpTo('}')
+                    });
+                } else {
+                    parts.push({
+                        type : 'text',
+                        content : takeNormal()
+                    });
+                }
+            }
+            return parts;
+        };
+
+    }
+    // @inherits Dictionary
+    copy(Translator.prototype, Dictionary.prototype);
+    // @overwrites Dictionary.store
+    Translator.prototype.store = function(name, value, callback) {
+        var fixedArgs = asArray(arguments, 3);
+        var dico = this.lookup(name) || new Dictionary();
+        dico.loadProperties.apply(dico, [ value, callback ].concat(fixedArgs));
+        this.values[name] = dico;
+    };
+    Translator.prototype.translate = function(lang, key, params) {
+        var ret = [];
+        var dico = this.lookup(lang);
+        var message = dico ? dico.lookup(key) : key;
+        var parts = this.splitText(message);
+        forEach(parts, function(part) {
+            var type = part ? part.type : 'text';
+            switch (type) {
+                case 'text':
+                    ret.push(part.content);
+                    break;
+                case 'param':
+                    var i = part.content;
+                    if (isNumber(i) && params.length > i) {
+                        ret.push(params[i]);
+                    }
+                    break;
+            }
+        });
+        return ret.join('');
+    };
+
+    var translator = new Translator();
+
     return {
-        init : function(dictionaries, lang, callback) {
-            if(lang != undefined){
-                _defaultLang = lang;
+        load : function(lang, url, callback) {
+            if (isUndefined(callback)) {
+                var self = this;
+                callback = function() {
+                    self.translateDocument(lang);
+                };
             }
-            _loadDictionaries(dictionaries, callback);
+            translator.store(lang, url, callback);
         },
-        resetLang : function(lang){
-            if(lang != undefined && _dictionaries[lang] != undefined){
-                _dictionary = _dictionaries[lang];
-            }
-            else{
-                console.error('failed to reset lang to ' + lang);
-            }
+        translate : function(lang, key, params) {
+            return translator.translate(lang, key, params);
         },
-        translate : function(key, lang, params){
-            var _dico = _dictionary;
-            if(lang != undefined && _dictionaries[lang] != undefined){
-                _dico = _dictionaries[lang];
-            }
-            return key!=undefined && _dico != undefined ? _dico.translate(key, params) : null;
+        translateDocument : function(lang, params) {
+            var self = this;
+            forEach(getByClass(document, 'i18n'), function(element) {
+                var key = element.id;
+                if (isDefined(key)) {
+                    var text = self.translate(lang, key, params);
+                    setText(element, text);
+                }
+            });
         }
     };
 })();

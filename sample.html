@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>nativejsi18n api</title>
+<script type="text/javascript" src="nativejsi18n.js"></script>
+<script type="text/javascript">
+<!--
+alert(i18n.translate('fr', 'Hello {0}', ['Stéphane']));
+i18n.load('fr', 'i18n/messages_fr.properties', function(){i18n.translateDocument('fr')});
+//-->
+</script>
+</head>
+<body>
+<div id="authentication.failure" class="i18n"></div>
+</body>
+</html>
