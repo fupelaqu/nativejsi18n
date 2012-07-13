@@ -8,6 +8,7 @@
 var i18n = (function() {
     var document = window.document, navigator = window.navigator;
     var defaultLang = navigator.userLanguage || navigator.language;
+    var defaultDictionary = '_';
 
     /* begin functions */
 
@@ -243,16 +244,12 @@ var i18n = (function() {
     }
     // @inherits Dictionary
     copy(Translator.prototype, Dictionary.prototype);
-    // @overwrites Dictionary.store
-    Translator.prototype.store = function(name, value, callback) {
-        var dico = this.lookup(name) || new Dictionary();
-        dico.loadProperties.apply(dico, [ value, callback ].concat(asArray(
-                arguments, 3)));
-        this.values[name] = dico;
-    };
     Translator.prototype.translate = function(lang, key, params) {
         var ret = [];
         var dico = this.lookup(lang);
+        if (isUndefined(dico)) {
+            dico = this.lookup(defaultDictionary);
+        }
         var message = dico ? dico.lookup(key) : key;
         var parts = this.splitText(message);
         forEach(parts, function(part) {
@@ -262,9 +259,14 @@ var i18n = (function() {
                     ret.push(part.content);
                     break;
                 case 'param':
-                    var i = part.content;
-                    if (isNumber(i) && params.length > i) {
-                        ret.push(params[i]);
+                    var param = part.content;
+                    if (isNumber(param) && isDefined(params)
+                            && params.length > param) {
+                        ret.push(params[param]);
+                    } else if (isDefined(dico) && dico.contains(param)) {
+                        ret.push(dico.lookup(param));
+                    } else {
+                        ret.push(eval(param));
                     }
                     break;
             }
@@ -275,21 +277,44 @@ var i18n = (function() {
     var translator = new Translator();
 
     return {
-        load : function(dictionaries, callback) {
-            var loadDictionaries = function(dictionaries) {
-                if (dictionaries && dictionaries.length > 0) {
-                    var dictionary = dictionaries[0];
-                    translator.store(dictionary.lang || defaultLang,
-                            dictionary.url, function() {
-                                dictionaries.splice(0, 1);
-                                loadDictionaries(dictionaries);
+        load : function(urls, callback) {
+            if (typeof urls == 'string') {
+                urls = [ urls ];
+            }
+            var loadUrls = function(urls) {
+                if (urls && urls.length > 0) {
+                    var url = urls[0];
+                    var dico = new Dictionary();
+                    dico.loadProperties(url,
+                            function() {
+                                var lang = dico.lookup('lang');
+                                if (isUndefined(lang)
+                                        && /_\w\w\.properties$/.test(url)) {
+                                    var index = url
+                                            .search(/_\w\w\.properties$/);
+                                    lang = url.slice(index + 1, index + 3);
+                                } else {
+                                    // default dictionary to use for all
+                                    // messages
+                                    lang = defaultDictionary;
+                                }
+                                var _dico = translator.lookup(lang);
+                                if (isDefined(_dico)) {
+                                    dico.each(function(name, value) {
+                                        _dico.store(name, value);
+                                    });
+                                    dico = _dico;
+                                }
+                                translator.store(lang, dico);
+                                urls.splice(0, 1);
+                                loadUrls(urls);
                             });
                 } else if (isDefined(callback)) {
-                    setTimeout(callback, 100);
+                    setTimeout(callback, 1);
                 }
             };
 
-            loadDictionaries(dictionaries);
+            loadUrls(urls);
 
         },
         translate : function(lang, key, params) {
