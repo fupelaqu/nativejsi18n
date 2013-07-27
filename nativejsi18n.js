@@ -154,7 +154,7 @@ var i18n = (function() {
                 xhr = new ActiveXObject('Microsoft.XMLHTTP');
             }
             xhr.onreadystatechange = function() {
-                var requestTimer = setTimeout(function() {
+                setTimeout(function() {
                     xhr.abort();
                     // TODO Handle timeout situation, e.g. Retry or inform user.
                 }, 30000);
@@ -177,7 +177,7 @@ var i18n = (function() {
         this.values[name] = value;
     };
     Dictionary.prototype.lookup = function(name) {
-        return this.values[name];
+        return isDefined(name) ? this.values[name] : null;
     };
     Dictionary.prototype.contains = function(name) {
         return Object.prototype.hasOwnProperty.call(this.values, name)
@@ -197,6 +197,10 @@ var i18n = (function() {
     };
 
     /* end Dictionary class */
+
+    if(isDefined(defaultLang) && defaultLang.length > 2){
+    	defaultLang = defaultLang.substring(0, 2);
+    }
 
     function Translator() {
         Dictionary.apply(this, arguments);
@@ -246,11 +250,23 @@ var i18n = (function() {
     copy(Translator.prototype, Dictionary.prototype);
     Translator.prototype.translate = function(lang, key, params) {
         var ret = [];
-        var dico = this.lookup(lang);
-        if (isUndefined(dico)) {
-            dico = this.lookup(defaultDictionary);
+        if (isDefined(params) && typeof params == 'string') {
+            params = [ params ];
         }
-        var message = dico ? dico.lookup(key) : key;
+        var _self = this;
+        var dico = this.lookup(lang);
+        function innerLookup(key) {
+            if (isDefined(dico) && dico.contains(key)) {
+                return dico.lookup(key);
+            }
+            var _default = _self.lookup(defaultLang);
+            if (isDefined(_default) && _default.contains(key)) {
+                return _default.lookup(key);
+            }
+            var _defaultDictionary = _self.lookup(defaultDictionary);
+            return isDefined(_defaultDictionary) ? _defaultDictionary.lookup(key) : null;
+        }
+        var message = innerLookup(key) || key;
         var parts = this.splitText(message);
         forEach(parts, function(part) {
             var type = part ? part.type : 'text';
@@ -263,8 +279,8 @@ var i18n = (function() {
                     if (isNumber(param) && isDefined(params)
                             && params.length > param) {
                         ret.push(params[param]);
-                    } else if (isDefined(dico) && dico.contains(param)) {
-                        ret.push(dico.lookup(param));
+                    } else if (innerLookup(param)) {
+                        ret.push(innerLookup(param));
                     } else {
                         ret.push(eval(param));
                     }
