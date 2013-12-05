@@ -24,10 +24,10 @@ alert(i18n.translate(null, 'Hello {firstName}'));
 var user = function(){return firstName;};
 alert(i18n.translate(null, 'Hello {user()}'));
 
-i18n.load(['i18n/messages_fr.properties', 'i18n/messages_en.properties'], function(){translate('fr')});
+i18n.load(['i18n/messages.properties', 'i18n/messages_fr.properties', 'i18n/messages_en.properties'], function(){translate('fr')});
 
 function translate(lang){
-	// using jquery
+    // using jquery
     $(document).translate(lang);
 }
 //-->
