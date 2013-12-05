@@ -342,7 +342,7 @@ var i18n = (function() {
             }
             forEach(getByClass(document, 'i18n'), function(element) {
                 var key = element.getAttribute('i18n');
-                if(!isDefined(key)){
+                if(isUndefined(key)){
                     key = element.id;
                 }
                 if (isDefined(key)) {
