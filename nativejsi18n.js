@@ -7,7 +7,10 @@
 
 var i18n = (function() {
     var document = window.document, navigator = window.navigator;
-    var defaultLang = navigator.userLanguage || navigator.language;
+    var defaultLang = navigator.language || navigator.userLanguage;
+    if(defaultLang){
+        defaultLang = defaultLang.substring(0, 2);
+    }
     var defaultDictionary = '_';
 
     /* begin functions */
@@ -198,10 +201,6 @@ var i18n = (function() {
 
     /* end Dictionary class */
 
-    if(isDefined(defaultLang) && defaultLang.length > 2){
-    	defaultLang = defaultLang.substring(0, 2);
-    }
-
     function Translator() {
         Dictionary.apply(this, arguments);
         this.splitText = function(text) {
@@ -342,7 +341,10 @@ var i18n = (function() {
                 lang = defaultLang;
             }
             forEach(getByClass(document, 'i18n'), function(element) {
-                var key = element.id;
+                var key = element.getAttribute('i18n');
+                if(!isDefined(key)){
+                    key = element.id;
+                }
                 if (isDefined(key)) {
                     var text = self.translate(lang, key, params);
                     setText(element, text);
