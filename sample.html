@@ -26,16 +26,17 @@ alert(i18n.translate(null, 'Hello {user()}'));
 
 i18n.load(['i18n/messages.properties', 'i18n/messages_fr.properties', 'i18n/messages_en.properties'], function(){translate('fr')});
 
-function translate(lang){
+function chooseLanguage(lang){
     // using jquery
     $(document).translate(lang);
 }
+
 //-->
 </script>
 </head>
 <body>
 <form name="i18n">
-   <select id="id_offre" name="lang" onchange='translate(this.options[this.selectedIndex].value)'>
+   <select id="id_offre" name="lang" onchange='chooseLanguage(this.options[this.selectedIndex].value)'>
        <option value="fr">Fran&ccedil;ais</option>
        <option value="en">English</option>
    </select>
