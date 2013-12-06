@@ -347,7 +347,7 @@ var i18n = (function() {
                 }
                 if (isDefined(key)) {
                     var text = self.translate(lang, key, params);
-                    setText(element, text);
+                    element.innerHTML = text;
                 }
             });
         }
